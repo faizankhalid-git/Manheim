@@ -80,24 +80,29 @@ class ManheimSpider(scrapy.Spider):
                 if self.region_flag.lower().strip() == 'y':
                     try:
                         WebDriverWait(self.driver, 10).until(
-                            EC.element_to_be_clickable((By.XPATH, '//*[contains(@data-reactid,"226")]'))).click()
-                        region = self.driver.find_elements(By.CSS_SELECTOR, '[data-reactid="222"] button')
+                            EC.element_to_be_clickable((By.XPATH, '//*[contains(@class,"adjustmentsContainer")]//div[contains(text(),"Region")]'))).click()
+
+                        # WebDriverWait(self.driver, 10).until(
+                        #     EC.element_to_be_clickable((By.XPATH, '//*[contains(@data-reactid,"226")]'))).click()
+                        region = self.driver.find_elements(By.CSS_SELECTOR, '#regiondropdownContent button')
                         for options in region:
                             if row['Region'] in options.text:
                                 options.click()
-                        break
+                                break
                     except:
                         pass
 
                 if self.grade_flag.lower().strip() == 'y':
                     try:
+                        # WebDriverWait(self.driver, 10).until(
+                        #     EC.element_to_be_clickable((By.XPATH, '//*[contains(@data-reactid,"248")]'))).click()
                         WebDriverWait(self.driver, 10).until(
-                            EC.element_to_be_clickable((By.XPATH, '//*[contains(@data-reactid,"248")]'))).click()
-                        region = self.driver.find_elements(By.CSS_SELECTOR, '[data-reactid="245"] button')
+                            EC.element_to_be_clickable((By.XPATH, '//*[contains(@class,"adjustmentsContainer")]//div[contains(text(),"Grade")]'))).click()
+                        region = self.driver.find_elements(By.CSS_SELECTOR, '#gradedropdownContent button')
                         for options in region:
                             if row['Grade'] in options.text:
                                 options.click()
-                        break
+                                break
                     except:
                         pass
                 time.sleep(1)
@@ -105,16 +110,18 @@ class ManheimSpider(scrapy.Spider):
                 WebDriverWait(self.driver, 20).until(EC.element_to_be_clickable(
                     (By.CSS_SELECTOR, '[data-reactid="271"]')))
                 response = Selector(text=self.driver.page_source)
-                avf_odo = response.css('[data-reactid="135"]::text').get('')
-                avg_cond = response.css('[data-reactid="139"]::text').get('')
-                base_mmr = response.css('[data-reactid="129"]::text').get('')
-                adjust_mmr = ''.join(response.css('[data-reactid="165"] *::text').getall())
-                transactions = ''.join(response.css('[data-reactid="293"] *::text').getall())
+                avf_odo = response.xpath('//*[contains(text(),"Avg Odometer (mi)")]/ancestor::div[1]//text()').getall()
+                avg_cond = response.xpath('//*[contains(text(),"Avg Condition")]/ancestor::div[1]//text()').getall()
+                base_mmr = response.xpath('//*[contains(text(),"Base MMR")]/ancestor::div[1]//text()').getall()
+                # base_mmr = response.css('[data-reactid="129"]::text').get('')
+                adjust_mmr = ''.join(response.css('[class*="adjustedMMRContainer"] *::text').getall())
+                trans_xpath = '//*[contains(@class,"filterSetTriangleDown")]/following::span[1]//text()'
+                transactions = ''.join(response.xpath(trans_xpath).getall())
                 try:
                     transaction_count = transactions.split(' ')[-1]
                 except:
                     transaction_count = transactions
-                typical_range = ''.join(response.css('[data-reactid="158"] *::text').getall())
+                typical_range = response.css('[class*="adjMMRRangeValue"] .print--hide::text').get()
                 lower_range, upper_range = '', ''
                 try:
                     lower_range = typical_range.split('-')[0]
@@ -125,10 +132,10 @@ class ManheimSpider(scrapy.Spider):
                 yield {
                     'VIN': row['VIN'],
                     'Mileage': row['Mileage'],
-                    'Base MMR': base_mmr,
-                    'Avg. Odo': avf_odo,
-                    'Avg. Cond': avg_cond,
-                    'Adjustment MMR': adjust_mmr,
+                    'Base MMR': ''.join(base_mmr).replace('Base MMR,','').replace('Base MMR',''),
+                    'Avg. Odo': ''.join(avf_odo).replace('Avg Odometer (mi),','').replace('Avg Odometer (mi)',''),
+                    'Avg. Cond': ''.join(avg_cond).replace('Avg Condition,','').replace('Avg Condition',''),
+                    'Adjustment MMR': adjust_mmr.replace('Adjusted MMR',''),
                     'Transaction': transaction_count,
                     'Lower Range': lower_range,
                     'Upper Range': upper_range,
